@@ -30,18 +30,22 @@ Restart `dsh web`; a **✦** appears in the composer tool row, left of the submi
 dsh plugin --profile web remove dsh-improve-prompt   # uninstall
 ```
 
-## What it does
+## Core features
 
-- **One-click replace** — press ✦, and 1–3 seconds later the draft has become a sharper, agent-ready prompt. No preview dialog, no interruption (the WorkBuddy shape).
-- **One-click undo** — a status bar appears above the composer; press Undo within 8 seconds to restore the original. The moment you edit by hand the bar disappears, so your new input is never overwritten.
-- **Fidelity gate (the real difference)** — it mechanically extracts the draft's **hard facts**: file paths, file names, identifiers, numbers and versions, URLs, `backticked` code, @references. Each one is then verified to have literally survived the rewrite. A missing fact triggers one **repair call** naming those exact strings; if the model still drops it, a **deterministic re-append** adds a "Preserved original details" block. **Every other enhancer in the ecosystem just asks the model, in its system prompt, to "preserve the original details" — none of them checks.**
-- **Length gate** — a rewrite over budget (2.5x in Standard, **never below a 200-character absolute floor**) gets one convergence call carrying an explicit character budget; if it is still over, nothing is written back and the reason is shown. This kills the runner-up failure mode: a one-line request returned as a thirty-line specification.
-- **Quality certificate** — the status bar tells you whether to trust the result: `Improved · fidelity 5/5 · 1.0x · 2.2s`.
-- **Two modes** — **Light** (de-filler and disambiguate, ≤1.2x — WorkBuddy's own "fewer tokens" positioning) / **Standard** (restructure, ≤2.5x). Remembered locally.
-- **Slash commands work too** — with `/bugfix ISS-202607-00090605A 用户反馈填充后密码框被清空…` the command prefix is **kept verbatim** and only the text after it is rewritten. The button is disabled only when a command has no body yet, which is genuinely nothing to rewrite.
-- **Cancellable** — press ✦ again while it runs to genuinely abort the upstream request (`AbortSignal`).
+- **One-click replace** — **click** ✦ and 1–3 seconds later the draft is **replaced** with a sharper, agent-ready prompt. No preview dialog, no interruption.
+- **One-click undo** — **restore** the original within 8 seconds; the moment you edit by hand the undo bar disappears, so your new input is never overwritten.
+- **Fidelity gate (the real difference)** — it mechanically **extracts** the draft's hard facts (file paths, file names, identifiers, numbers and versions, URLs, `backticked` code, @references) and **verifies** each one literally survived the rewrite. A missing fact triggers one repair call naming those exact strings; if the model still drops it, a deterministic **re-append** adds a "Preserved original details" block — zero loss. Every other enhancer in the ecosystem just asks the model to "preserve the original details"; none of them checks.
+- **Length gate** — a rewrite over budget (2.5x in Standard, **never below a 200-character absolute floor**) gets one convergence call carrying an explicit character budget; if it is still over, nothing is written back and the reason is shown.
+- **Quality certificate** — the status bar **shows** `Improved · fidelity 5/5 · 1.0x · 2.2s`: trust at a glance.
+- **Two modes** — **Light** (≤1.2x, de-filler and disambiguate) / **Standard** (≤2.5x, restructure); the mode is remembered locally, and the **⇄** zone on the chip switches instantly.
+- **Slash commands supported** — with `/bugfix <body>` the command prefix is **kept verbatim** and only the body is rewritten; the button is disabled only when a command has no body yet.
+- **Cancellable** — **click** ✦ again while it runs to genuinely **abort** the upstream request (`AbortSignal`); the draft stays untouched.
 - **Failure keeps your draft** — no model, timeout, empty output, network error: your input is **never touched**, you just get one readable message.
-- **Smart session context** — history is attached only when the draft cannot stand alone (an anaphoric marker like it / this / the same way, or a ≤12-character draft with no concrete fact). The decision is a local regex, zero extra calls. What travels: **your own words + the tail of the assistant's prose** (600 characters per turn). Tool results, plugin-injected context, images, reasoning, and project source never do.
+- **Smart session context** — history is **attached** only when the draft cannot stand alone (anaphora like it / this, or a ≤12-character draft): your own words plus the tail of the assistant's prose. The decision is a local regex, zero extra calls; tool results, injected context, images and source code never travel.
+- **Zero-config out of the box** — no API key required; every optional setting has a default (see *Advanced usage*).
+- **Prompt templates are overridable** — all behaviour lives in `prompts/*.md`; drop same-named files into `$DSH_HOME/dsh-improve-prompt/prompts/` to **replace** the discipline layer and mode templates without touching code.
+- **Local HTTP surface** — `POST /dsh-improve-prompt/api/improve` **exposes** the same pipeline to your scripts and tools (loopback only).
+- **Short-draft protection** — the budget is `max(200, length × ratio)`, so a three-line draft is never killed by the ratio (a real flaw found in live testing, locked down by four tests).
 
 ### How it differs from the five existing enhancers
 
@@ -49,23 +53,71 @@ No preview-and-compare panel, no voice input, no self-updater, no multi-stage LL
 
 **At most two model calls per click** (one generation + one repair). Never a pipeline.
 
-## 30-second tour
+## Quick start
 
-1. Type a draft — one line, colloquial, typos and all:
+1. **Type** a colloquial draft — one line, typos and all:
    > 就是那个 帮我把 src/host/config.ts 里的 maxRatioFor 改成 2.5 呗，用 `pnpm build` 验证一下
-2. Hover the **✦ star circle** in the composer toolbar — the chip expands leftward into 「✦ 标准 │ ⇄」 (collapsed by default, breathing while a draft waits)
+2. **Click** the **✦ star circle** in the composer toolbar — hovering expands the chip into 「✦ 标准 │ ⇄」 (collapsed by default, breathing while a draft waits)
 3. Wait 1–3 seconds; the draft becomes:
    > 把 `src/host/config.ts` 里的 `maxRatioFor` 改成 `2.5`；用 `pnpm build` 验证一下。
-4. Read the certificate: `已增强 · 保真 5/5 · 1.0x · 2.2s`
-5. Not happy? **Undo** (within 8 seconds)
+4. Read the certificate on the status bar above the composer: `已增强 · 保真 5/5 · 1.0x · 2.2s`
+5. **Press**「撤回」(Undo) to **restore** the original — valid for 8 seconds; edit by hand and the bar disappears
+6. **Click** the **⇄** zone to switch Light / Standard instantly (remembered locally)
+7. **Click** ✦ again to **cancel** a run in progress — the draft stays untouched
 
+### Usage examples
 
+Real input → output pairs (rows 1–4 were produced by a real model on this machine, see *Real measured examples*; the last two are documented behaviours):
+
+| Input | Output |
+|---|---|
+| 就是那个 帮我把 src/host/config.ts 里的 maxRatioFor 改成 2.5 呗，顺便看看 https://example.com/a?b=1 那个文档，用 `pnpm build` 验证一下 | 把 `src/host/config.ts` 里的 `maxRatioFor` 改成 `2.5`，同时看一下 https://example.com/a?b=1 这个文档，然后用 `pnpm build` 验证一下。(fidelity 5/5 · 1.0x) |
+| I was kind of wondering if you could maybe take a look at the login flow and see if there is any way we could possibly make it a bit faster | Take a look at the login flow and see if there's any way we can make it faster — it feels slow to me. (0.6x, Light) |
+| 加个功能 | 加个功能 (nothing invented when the draft carries no information — unchanged is the correct outcome) |
+| 把那个接口加上限流 | 给那个接口加上限流 + structured follow-ups: (TBD: which endpoint / threshold window / overflow behaviour) — zero facts invented |
+| /bugfix ISS-202607-00090605A 用户反馈填充后密码框被清空，帮忙查一下 | `/bugfix ISS-202607-00090605A` prefix kept verbatim + only the body rewritten |
+| Click ✦ again while a run is in progress | The upstream request is genuinely aborted; the draft stays as-is |
+| Press「撤回」(Undo) within 8 seconds | The original is restored verbatim; the rewrite is discarded |
+| Click ✦ with no model configured | A clear error: "未找到可用模型：请先在设置里选默认模型" — the draft is untouched |
+
+Script and tool integration:
+
+```sh
+# wire the enhancer into your own scripts via the local HTTP surface (loopback only)
+curl -X POST http://127.0.0.1:3080/dsh-improve-prompt/api/improve \
+  -H 'content-type: application/json' \
+  -d '{"text":"把那个接口加上限流","sessionId":"sess-1","mode":"standard"}'
+```
+
+```sh
+# slash command: prefix kept verbatim, only the body rewritten
+/bugfix ISS-202607-00090605A 用户反馈填充后密码框被清空，帮忙查一下根因
+```
+
+Override the prompt templates without touching code:
+
+```sh
+# drop same-named files into this directory to take effect
+cp my-discipline.md $DSH_HOME/dsh-improve-prompt/prompts/discipline.md
+cp my-standard.md $DSH_HOME/dsh-improve-prompt/prompts/standard.md
+```
+
+Change the default mode and ceilings (keys explained under *Advanced usage*):
+
+```yaml
+# a snippet of the profile's cordis.patch.yml
+- insert:
+    - id: dsh-improve-prompt
+      config:
+        defaultMode: light
+        standardMaxRatio: 2.5
+```
 
 ## Button design and interaction
 
 ![four states x both themes, from the real CSS and the real DOM](https://raw.githubusercontent.com/hoyyang/dsh-improve-prompt/main/assets/button-states.png)
 
-**Crisp geometry first, light second, and every light source contained inside the pill** (which clips with `overflow:hidden`). The plate is **dark navy glass in both themes** and never inverts; the rim is a width-independent `conic-gradient`; the palette is this plugin's own cyan -> electric blue -> gold (the banner family).
+**Crisp geometry first, light second, and every light source contained inside the chip** (which clips with `overflow:hidden`). The plate is **dark navy glass in both themes** and never inverts; the rim is a width-independent `conic-gradient`; the palette is this plugin's own cyan -> electric blue -> gold (the banner family). The main button and the **⇄** mode switch fuse into one **split glass chip**: one plate, two zones, an electric-blue pool behind the switch zone, and a 1px hairline divider that separates hit areas without ever crossing a glyph.
 
 | State | Treatment |
 |---|---|
@@ -92,14 +144,19 @@ No light source ever sits under the glyphs: the spark owns the icon slot (9px cl
 
 Worst case **5.43:1** (disabled label; WCAG AA wants >= 4.5:1) — the caret is brightest exactly when the main action is disabled, because switching modes stays usable. `npm run harness:button` builds a comparison page with the real dsh-plan-board button beside this one, so every claim here is reproducible.
 
-## Typical scenes
+## Typical scenarios
 
 1. **A colloquial request, said clearly once** — "帮我看看能不能把那个登录接口改得快一点，就是感觉有点慢" loses the verbal filler but keeps your own judgement ("feels slow") and does not pick an optimisation technique for you.
-2. **A request carrying paths and identifiers** — where the fidelity gate earns its keep. File paths, function names, version numbers, URLs and backticked code survive the rewrite verbatim instead of being paraphrased away.
+2. **A request carrying paths and identifiers** — where the fidelity gate earns its keep: file paths, function names, version numbers, URLs and backticked code survive the rewrite verbatim instead of being paraphrased away.
 3. **A wordy English sentence** — Light mode compresses "I was kind of wondering if you could maybe…" into one executable English request.
 4. **A continuation draft** — you discussed an endpoint last turn and now type only "把那个接口加上限流". Smart context carries the recent turns, so the rewrite connects to the plan you already agreed on.
 5. **A mis-click or a result you dislike** — press Undo within 8 seconds. The moment you edit by hand the bar disappears, so your new input is never overwritten.
-6. **A vague draft** — something like "加个功能" is never padded into a fabricated spec: the discipline layer tells the model to leave it alone rather than invent, so you get it back unchanged.
+6. **A vague draft is never padded** — something like "加个功能" is never invented into a fabricated spec: the discipline layer tells the model to leave it alone, so you get it back unchanged or with explicit (TBD) follow-ups.
+7. **A slash command with a long body** — `/bugfix <a rambling account>`: the prefix survives verbatim and only the body becomes a clearly structured investigation request; command parsing is unaffected.
+8. **Script and tool integration** — `POST /dsh-improve-prompt/api/improve` wires the same pipeline into your own scripts, CI or editor tooling, loopback only.
+9. **Mixed Chinese-English drafts** — English paths, function names and versions inside Chinese prose: the fidelity gate treats them as hard facts and keeps them verbatim; no translation pass eats your identifiers.
+10. **Long drafts afraid of bloat** — a colloquial wall of text in Standard mode: restructuring is capped at 2.5x, over-budget results get one convergence call, and anything still over is refused instead of silently becoming a thirty-line spec.
+11. **Paste the error verbatim** — drop a whole stack trace or validation log into the draft: class names, paths and versions are kept as hard facts while your ask is rewritten into one executable investigation request.
 
 ## What you will see
 
@@ -108,7 +165,10 @@ Worst case **5.43:1** (disabled label; WCAG AA wants >= 4.5:1) — the caret is 
 - **Re-append notice** — only when the deterministic fallback fired: `已增强 · 保真 5/5 · 1.4x · 3.1s · 已回灌 src/a.ts`
 - **Preserved-details block** — appended to the rewrite on re-append: `保留原始细节 / Preserved original details:` followed by the exact strings
 - **Failure copy (draft untouched)** — "增强超时（60000ms），原文未改动" / "未找到可用模型：请先在设置里选默认模型" / "增强结果超出长度上限（…），已保留原文"
-- **Mode label** — the button shows the active mode (轻 / 标准); the **▾** zone on the same glass chip switches it
+- **Mode label** — the button shows the active mode (轻 / 标准); the **⇄** zone on the same glass chip switches it
+- **Chip two states** — a 28px star circle at rest, expanding into the 「✦ 标准 │ ⇄」 split glass chip on hover (the left neighbor reflows automatically)
+- **API response** — `POST /api/improve` returns the rewritten body plus certificate fields (fidelity count / length ratio / contextUsed / elapsed), ready for scripts to consume
+- **Cancellation feedback** — after an abort the status bar disappears immediately and the draft is preserved; no dangling timers, no half-written text
 
 ## Real measured examples
 
@@ -117,9 +177,9 @@ All four were produced on a real model on this machine — none of them is a con
 **① Chinese + hard facts (Standard)**
 
 ```text
-in : 就是那个 帮我把 src/host/config.ts 里的 maxRatioFor 改成 2.5 呗，顺便看看 https://example.com/a?b=1 那个文档，用 `pnpm build` 验证一下
-out: 把 `src/host/config.ts` 里的 `maxRatioFor` 改成 `2.5`，同时看一下 https://example.com/a?b=1 这个文档，然后用 `pnpm build` 验证一下。
-certificate: fidelity 5/5 · 1.0x · 2.2s
+输入：就是那个 帮我把 src/host/config.ts 里的 maxRatioFor 改成 2.5 呗，顺便看看 https://example.com/a?b=1 那个文档，用 `pnpm build` 验证一下
+输出：把 `src/host/config.ts` 里的 `maxRatioFor` 改成 `2.5`，同时看一下 https://example.com/a?b=1 这个文档，然后用 `pnpm build` 验证一下。
+凭证：保真 5/5 · 1.0x · 2.2s
 ```
 
 The path, the identifier, the version, the URL and the backticked command all survive verbatim; only the noise ("就是那个", "呗") is gone.
@@ -127,17 +187,17 @@ The path, the identifier, the version, the URL and the backticked command all su
 **② Wordy English (Light)**
 
 ```text
-in : I was kind of wondering if you could maybe take a look at the login flow and see if there is any way we could possibly make it a bit faster, it feels slow to me
-out: Take a look at the login flow and see if there's any way we can make it faster — it feels slow to me.
-certificate: 0.6x
+输入：I was kind of wondering if you could maybe take a look at the login flow and see if there is any way we could possibly make it a bit faster, it feels slow to me
+输出：Take a look at the login flow and see if there's any way we can make it faster — it feels slow to me.
+凭证：0.6x
 ```
 
 **③ Vague input (Standard) — it refuses to invent**
 
 ```text
-in : 加个功能
-out: 加个功能
-certificate: 1.0x
+输入：加个功能
+输出：加个功能
+凭证：1.0x
 ```
 
 The model is told not to invent requirements when the draft carries none; returning it unchanged is the correct outcome.
@@ -145,8 +205,8 @@ The model is told not to invent requirements when the draft carries none; return
 **④ Explicit uncertainty (Standard)**
 
 ```text
-in : 把那个接口加上限流
-out: 给那个接口加上限流。
+输入：把那个接口加上限流
+输出：给那个接口加上限流。
 
 - 目标接口：(TBD: 具体是哪个接口/路由)
 - 限流规则（阈值与时间窗口）：(TBD: 例如每秒/每分钟允许多少次)
@@ -156,11 +216,17 @@ out: 给那个接口加上限流。
 
 **Structure added, zero facts invented.** Gaps are marked `(TBD: …)` for you to fill, instead of guessed at.
 
-## Advanced
+## Advanced usage
+
+Everything is optional and everything has a default; three paths to adjust behavior:
+
+- **Retune settings** — `cordis.patch.yml` changes the default mode, length ceilings, timeout and context depth (table below).
+- **Retune the prompts** — override the `prompts/*.md` templates; the discipline layer and mode copy are yours to edit, no code touched.
+- **Wire up scripts** — `POST /dsh-improve-prompt/api/improve` plugs the pipeline into your own tooling.
 
 ### Configuration
 
-Everything is optional; set it in the profile's `cordis.patch.yml`:
+Set it in the profile's `cordis.patch.yml`:
 
 ```yaml
 - insert:
@@ -186,7 +252,7 @@ Everything is optional; set it in the profile's `cordis.patch.yml`:
         logFailures: true
 ```
 
-**Model routing**: explicit `provider` + `model` → `agentDefaultModel`'s current selection → the last route seen on the live `llm/stream` waterfall. If none resolves, it fails loudly and the draft is untouched.
+**Model routing**: explicit `provider` + `model` → `agentDefaultModel`'s current selection → the last route seen on the live waterfall. If none resolves, it fails loudly and the draft is untouched.
 
 ### Retune the prompts without touching code
 
