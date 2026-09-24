@@ -161,10 +161,10 @@ cp my-standard.md $DSH_HOME/dsh-improve-prompt/prompts/standard.md
 ## 你会看到什么
 
 - **质量凭证** —— 状态条：`已增强 · 保真 5/5 · 1.0x · 2.2s`
-- **撤回入口** —— 同一条上的「撤回」按钮，8 秒自动消失
+- **撤回入口** —— 同一条上的「撤回」按钮，8 秒自动消失（失败提示停留 12 秒）
 - **回灌提示** —— 只剩确定性兜底时才出现：`已增强 · 保真 5/5 · 1.4x · 3.1s · 已回灌 src/a.ts`
 - **原文保留块** —— 回灌时正文末尾追加 `保留原始细节 / Preserved original details:` 加逐条硬事实
-- **失败提示（原文不动）** —— 「增强超时（60000ms），原文未改动」/「未找到可用模型：请先在设置里选默认模型」/「增强结果超出长度上限（…），已保留原文」
+- **失败提示（原文不动）** —— 「增强超时（180000ms），原文未改动」/「未找到可用模型：请先在设置里选默认模型」/「增强结果超出长度上限（…），已保留原文」
 - **档位标签** —— 按钮上直接显示当前档位（轻 / 标准）；芯片右侧的 **⇄** 一键切换
 - **芯片两态** —— 平时 28px 星芒圆标，悬停展开为「✦ 标准 │ ⇄」分体玻璃芯片（左邻控件自动让位）
 - **接口返回** —— `POST /api/improve` 返回改写正文与凭证字段（保真计数 / 长度比 / contextUsed / 耗时），脚本可直接消费
@@ -238,8 +238,8 @@ cp my-standard.md $DSH_HOME/dsh-improve-prompt/prompts/standard.md
         standardMaxRatio: 2.5      # 标准档长度上限
         acceptanceCriteria: false  # 标准档追加"可验证验收条款"
         temperature: 0.3
-        maxTokens: 2000
-        timeoutMs: 60000
+        maxTokens: 8192
+        timeoutMs: 180000
         maxInputChars: 20000
         contextTurns: 3            # 会话上下文轮数；0 = 关闭
         contextChars: 6000
@@ -248,7 +248,7 @@ cp my-standard.md $DSH_HOME/dsh-improve-prompt/prompts/standard.md
         lengthGate: true           # 长度闸
         provider: ''               # 与 model 成对填写则覆盖会话模型
         model: ''
-        reasoningEffort: ''        # 留空 = 不发送该参数（网关兼容性最好）
+        reasoningEffort: low        # 默认 low：改写是浅任务，避免深思考拖到超时；off/high/max 可改
         logFailures: true
 ```
 

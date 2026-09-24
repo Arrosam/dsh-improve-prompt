@@ -165,9 +165,15 @@ export function apply(ctx: HostContext, rawConfig: unknown): void {
         if (res.writableEnded !== true) { clientGone = true; controller.abort() }
       })
 
+      const started = Date.now()
       try {
         const result = await improveDraft(deps(), config, { draft, sessionId, mode, signal: controller.signal })
         if (clientGone) return
+        // Every refusal is observable: the handled failure payloads below used to
+        // return silently, leaving nothing in the host log to diagnose with.
+        if (result.ok === false && config.logFailures) {
+          log?.warn?.('[dsh-improve-prompt] ' + result.code + ' (' + String(Date.now() - started) + 'ms): ' + result.message)
+        }
         sendJson(res, 200, result)
       } catch (error) {
         if (clientGone) return

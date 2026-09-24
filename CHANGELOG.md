@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.2
+
+深思考模型适配（GLM-5.3-flash @ effort=max 实测驱动，2026-09-24）：默认模型切到深思考后，「点击无结果」高频复现——单次 90 字改写实测耗时 50.5s（占 60s 超时预算 84%），草稿稍复杂即 `TIMEOUT`；思考 token 计入 completion 上限，复杂草稿可烧光 2000 token 报 `EMPTY`。
+
+- **默认值重定**：`timeoutMs` 60000 → **180000**；`maxTokens` 2000 → **8192**；`reasoningEffort` 留空（继承全局 effort）→ **low**（改写是浅任务；宿主对 session-title 同思路降思考；zhipuai 网关禁 disabled，low 为延迟地板；deepseek/zhipuai 双侧适配器均合法）。旧配置经 resolveConfig 防御式回落，零升级风险。
+- **失败可观测**：TIMEOUT / EMPTY_OUTPUT / TOOL_CALL / UPSTREAM / LENGTH_EXCEEDED 等全部 `ok:false` 路径现在落 `ctx.logger.warn`（带错误码与耗时）——此前只有抛异常路径落日志，排查无痕。
+- **错误条 6s → 12s**：失败提示更容易被看到。
+- **凭证模型名去双前缀**：selection 携带 `zhipuai/glm-5.3-flash` 时不再渲染成 `zhipuai/zhipuai/…`。
+- 测试 88 → **91**（新默认值 / effort 透传 / 单前缀凭证三断言）；typecheck 双端零错。
+
 ## 0.7.1
 
 两处光学微调（用户实测截图驱动）：

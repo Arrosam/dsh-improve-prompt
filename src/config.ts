@@ -39,8 +39,8 @@ export const Config = z.object({
   standardMaxRatio: z.number().default(2.5),
   acceptanceCriteria: z.boolean().default(false),
   temperature: z.number().default(0.3),
-  maxTokens: z.number().default(2000),
-  timeoutMs: z.number().default(60000),
+  maxTokens: z.number().default(8192),
+  timeoutMs: z.number().default(180000),
   maxInputChars: z.number().default(20000),
   contextTurns: z.number().default(3),
   contextChars: z.number().default(6000),
@@ -49,7 +49,10 @@ export const Config = z.object({
   lengthGate: z.boolean().default(true),
   provider: z.string().default(''),
   model: z.string().default(''),
-  reasoningEffort: z.string().default(''),
+  // 'low' by default: a rewrite is a shallow task, and reasoning models at the
+  // agent's default effort (often max) can burn minutes or exhaust a small token
+  // budget on thinking before any answer text arrives.
+  reasoningEffort: z.string().default('low'),
   logFailures: z.boolean().default(true),
 })
 
@@ -89,8 +92,8 @@ export function resolveConfig(raw: unknown): ResolvedConfig {
     standardMaxRatio: positive(c.standardMaxRatio, 2.5),
     acceptanceCriteria: flag(c.acceptanceCriteria, false),
     temperature: nonNegative(c.temperature, 0.3),
-    maxTokens: positive(c.maxTokens, 2000),
-    timeoutMs: positive(c.timeoutMs, 60000),
+    maxTokens: positive(c.maxTokens, 8192),
+    timeoutMs: positive(c.timeoutMs, 180000),
     maxInputChars: positive(c.maxInputChars, 20000),
     contextTurns: nonNegative(c.contextTurns, 3),
     contextChars: nonNegative(c.contextChars, 6000),
@@ -99,7 +102,7 @@ export function resolveConfig(raw: unknown): ResolvedConfig {
     lengthGate: flag(c.lengthGate, true),
     provider: text(c.provider),
     model: text(c.model),
-    reasoningEffort: text(c.reasoningEffort),
+    reasoningEffort: text(c.reasoningEffort) !== '' ? text(c.reasoningEffort) : 'low',
     logFailures: flag(c.logFailures, true),
   }
 }

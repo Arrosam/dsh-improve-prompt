@@ -161,10 +161,10 @@ Worst case **5.43:1** (disabled label; WCAG AA wants >= 4.5:1) — the caret is 
 ## What you will see
 
 - **Quality certificate** — the status bar: `已增强 · 保真 5/5 · 1.0x · 2.2s`
-- **Undo affordance** — the 撤回 button on the same bar, gone after 8 seconds
+- **Undo affordance** — the 撤回 button on the same bar, gone after 8 seconds (failure copy stays 12)
 - **Re-append notice** — only when the deterministic fallback fired: `已增强 · 保真 5/5 · 1.4x · 3.1s · 已回灌 src/a.ts`
 - **Preserved-details block** — appended to the rewrite on re-append: `保留原始细节 / Preserved original details:` followed by the exact strings
-- **Failure copy (draft untouched)** — "增强超时（60000ms），原文未改动" / "未找到可用模型：请先在设置里选默认模型" / "增强结果超出长度上限（…），已保留原文"
+- **Failure copy (draft untouched)** — "增强超时（180000ms），原文未改动" / "未找到可用模型：请先在设置里选默认模型" / "增强结果超出长度上限（…），已保留原文"
 - **Mode label** — the button shows the active mode (轻 / 标准); the **⇄** zone on the same glass chip switches it
 - **Chip two states** — a 28px star circle at rest, expanding into the 「✦ 标准 │ ⇄」 split glass chip on hover (the left neighbor reflows automatically)
 - **API response** — `POST /api/improve` returns the rewritten body plus certificate fields (fidelity count / length ratio / contextUsed / elapsed), ready for scripts to consume
@@ -238,8 +238,8 @@ Set it in the profile's `cordis.patch.yml`:
         standardMaxRatio: 2.5
         acceptanceCriteria: false  # append a verifiable acceptance clause in Standard
         temperature: 0.3
-        maxTokens: 2000
-        timeoutMs: 60000
+        maxTokens: 8192
+        timeoutMs: 180000
         maxInputChars: 20000
         contextTurns: 3            # 0 disables history
         contextChars: 6000
@@ -248,7 +248,7 @@ Set it in the profile's `cordis.patch.yml`:
         lengthGate: true
         provider: ''               # set together with model to override the session model
         model: ''
-        reasoningEffort: ''        # empty = do not send the parameter at all
+        reasoningEffort: low        # default low: rewrites are shallow tasks; off/high/max also accepted
         logFailures: true
 ```
 

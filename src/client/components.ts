@@ -233,7 +233,7 @@ export function StatusBar(props: { sessionId?: string; t: TFn }): React.ReactEle
   React.useEffect(() => {
     if (sessionId === undefined) return undefined
     if (phase !== 'done' && phase !== 'error') return undefined
-    const ms = phase === 'done' ? 8000 : 6000
+    const ms = phase === 'done' ? 8000 : 12000
     const timer = window.setTimeout(() => { clear(sessionId) }, ms)
     return () => { window.clearTimeout(timer) }
   }, [sessionId, phase, token])
