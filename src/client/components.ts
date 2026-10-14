@@ -27,6 +27,18 @@ export interface SeatProps {
 const API = '/dsh-improve-prompt/api/improve'
 
 /**
+ * Keep a press on the chip from taking focus out of the composer.
+ *
+ * The host's Lexical setDraft() puts the caret at the end of the new text, but Lexical
+ * only applies a selection to the DOM while its contenteditable has focus. A plain
+ * button press moved focus onto the chip (and the refine then swaps the star for the
+ * Revert | Retry capsule, unmounting the focused button), so the caret ended up outside
+ * the input. The host's own toolbar buttons use the same mousedown preventDefault
+ * (keepDraftFocus in dsh-client-ui-conversation); click and keyboard activation still work.
+ */
+const keepComposerFocus = (event: React.MouseEvent): void => { event.preventDefault() }
+
+/**
  * Four-point sparkle — the same affordance WorkBuddy puts at the composer's corner.
  *
  * Filled with the plugin's own cyan-to-gold gradient rather than a flat colour. The
@@ -222,9 +234,9 @@ export function ImproveButton(props: SeatProps): React.ReactElement | null {
     return React.createElement('div', { className: 'dip-root', 'data-refined': 'true', role: 'group' },
       React.createElement('span', { className: 'dip-aurora', 'aria-hidden': 'true' }),
       React.createElement('span', { className: 'dip-ring', 'aria-hidden': 'true' }),
-      React.createElement('button', { type: 'button', className: 'dip-revert', title: t('revertTitle'), onClick: onRevert }, CapsuleIcon('revert'), t('revert')),
+      React.createElement('button', { type: 'button', className: 'dip-revert', title: t('revertTitle'), onMouseDown: keepComposerFocus, onClick: onRevert }, CapsuleIcon('revert'), t('revert')),
       React.createElement('span', { className: 'dip-divider', 'aria-hidden': 'true' }),
-      React.createElement('button', { type: 'button', className: 'dip-retry', title: t('retryTitle'), onClick: onRetry }, CapsuleIcon('retry'), t('retry')),
+      React.createElement('button', { type: 'button', className: 'dip-retry', title: t('retryTitle'), onMouseDown: keepComposerFocus, onClick: onRetry }, CapsuleIcon('retry'), t('retry')),
     )
   }
 
@@ -248,6 +260,7 @@ export function ImproveButton(props: SeatProps): React.ReactElement | null {
   React.createElement('button', {
     type: 'button',
     className: 'dip-chevron',
+    onMouseDown: keepComposerFocus,
     'aria-label': t('modeSwitchTitle'),
     title: (mode === 'light' ? t('modeLightHint') : t('modeStandardHint')) + ' · ' + t('modeSwitchTitle'),
     onClick: onCycleMode,
@@ -260,6 +273,7 @@ export function ImproveButton(props: SeatProps): React.ReactElement | null {
   React.createElement('button', {
     type: 'button',
     className: 'dip-btn',
+    onMouseDown: keepComposerFocus,
     disabled: isDisabled,
     'aria-label': t('buttonAria') + ' · ' + modeLabel,
     title,
@@ -291,6 +305,24 @@ function certificate(meta: Meta, t: TFn): string {
   return parts.join(' \u00b7 ')
 }
 
+/** Exit duration of the status bubble; must match `dip-bar-out` in styles.ts. */
+const BUBBLE_EXIT_MS = 160
+
+/** What the status bubble shows; null when it should be hidden. */
+interface Bubble { kind: 'done' | 'error'; text: string }
+
+function sameBubble(a: Bubble | null, b: Bubble | null): boolean {
+  return a === b || (a !== null && b !== null && a.kind === b.kind && a.text === b.text)
+}
+
+function bubbleFor(state: ReturnType<typeof storeFor> | null, phase: string, hidden: boolean, t: TFn): Bubble | null {
+  if (state === null || phase === 'idle' || phase === 'busy' || hidden) return null
+  if (phase === 'error') return { kind: 'error', text: state.error !== null ? state.error : t('err_UNKNOWN') }
+  const meta = state.meta
+  const note = meta !== null && meta.note !== '' ? t('preserved') + ' ' + meta.note : ''
+  return { kind: 'done', text: t('done') + (meta !== null ? ' \u00b7 ' + certificate(meta, t) : '') + (note !== '' ? ' \u00b7 ' + note : '') }
+}
+
 /**
  * Status bar, rendered above the composer card. Reads the store directly,
  * so it needs no slot props beyond the session id.
@@ -316,21 +348,32 @@ export function StatusBar(props: { sessionId?: string; t: TFn }): React.ReactEle
     return () => { window.clearTimeout(timer) }
   }, [sessionId, phase, token])
 
-  if (sessionId === undefined || state === null || phase === 'idle' || phase === 'busy') return null
-  if (phase === 'done' && hiddenToken === token) return null
+  const bubble = bubbleFor(state, phase, phase === 'done' && hiddenToken === token, t)
 
-  if (phase === 'error') {
-    return React.createElement('div', { className: 'dip-bar', 'data-kind': 'error' },
-      React.createElement('span', { className: 'dip-bar-text' }, state.error !== null ? state.error : t('err_UNKNOWN')),
-    )
+  // Keep the last bubble mounted briefly after it is hidden so it can slide down and fade
+  // out; React would otherwise remove it at once. Adjusting state during render is React's
+  // documented way to react to a prop/store change without an extra committed frame.
+  const [shown, setShown] = React.useState<Bubble | null>(null)
+  const [leaving, setLeaving] = React.useState<Bubble | null>(null)
+  if (!sameBubble(bubble, shown)) {
+    setLeaving(bubble === null ? shown : null)
+    setShown(bubble)
   }
 
-  const meta = state.meta
+  React.useEffect(() => {
+    if (leaving === null) return undefined
+    // A timer rather than animationend: with reduced motion the animation never runs.
+    const timer = window.setTimeout(() => { setLeaving(null) }, BUBBLE_EXIT_MS)
+    return () => { window.clearTimeout(timer) }
+  }, [leaving])
 
-  const note = meta !== null && meta.note !== '' ? t('preserved') + ' ' + meta.note : ''
+  const visible = bubble ?? leaving
+  if (visible === null) return null
+  return React.createElement('div', {
+    className: 'dip-bar',
+    'data-kind': visible.kind,
+    'data-state': bubble === null ? 'leaving' : 'entering',
+  }, React.createElement('span', { className: 'dip-bar-text' }, visible.text))
 
-  return React.createElement('div', { className: 'dip-bar' },
-    React.createElement('span', { className: 'dip-bar-text' },
-      t('done') + (meta !== null ? ' \u00b7 ' + certificate(meta, t) : '') + (note !== '' ? ' \u00b7 ' + note : '')),
-  )
 }
+

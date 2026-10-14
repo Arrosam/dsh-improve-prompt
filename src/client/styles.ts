@@ -264,9 +264,17 @@ export const css = [
   '.dip-root[data-busy="true"] .dip-icon{filter:drop-shadow(0 0 6px rgba(125,211,252,.95)) drop-shadow(0 0 12px rgba(245,197,66,.45))}',
 
   /* ---------- status bar ---------- */
-  '.dip-bar{display:flex;align-items:center;gap:8px;margin:0 auto 6px;max-width:100%;padding:5px 10px;',
+  // Rendered in the host's `conversation.input.overlay` anchor: a zero-height box pinned to
+  // the composer card's top edge. Positioned absolutely above it, the bubble paints over the
+  // transcript inside the sticky composer layer and never changes any element's size.
+  '.dip-bar{position:absolute;left:0;right:0;bottom:var(--dsh-composer-stack-gap,6px);width:fit-content;margin:0 auto;display:flex;align-items:center;gap:8px;',
+  'max-width:100%;box-sizing:border-box;padding:5px 10px;',
   'border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-elevated,var(--dsw-alias-bg-base));',
-  'font-size:12px;line-height:18px;color:var(--dsw-alias-label-secondary);box-shadow:0 1px 3px rgba(0,0,0,.06)}',
+  'font-size:12px;line-height:18px;color:var(--dsw-alias-label-secondary);box-shadow:0 4px 14px rgba(0,0,0,.18)}',
+  // Enter slides up and fades in; leave slides down and fades out. Only transform/opacity
+  // animate, so the overlay still never changes any element's layout.
+  '.dip-bar[data-state="entering"]{animation:dip-bar-in 200ms cubic-bezier(.2,.8,.2,1) both}',
+  '.dip-bar[data-state="leaving"]{animation:dip-bar-out 160ms ease-in both;pointer-events:none}',
   '.dip-bar[data-kind="error"]{border-color:rgba(220,90,70,.5);color:var(--dsw-alias-label-primary)}',
   '.dip-bar-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
   '.dip-sep{opacity:.4}',
@@ -279,11 +287,13 @@ export const css = [
   '@keyframes dip-aurora{0%,100%{opacity:.7}50%{opacity:1}}',
   '@keyframes dip-spark-pulse{0%,100%{opacity:.5;transform:translateY(-50%) scale(.95)}50%{opacity:1;transform:translateY(-50%) scale(1.15)}}',
   '@keyframes dip-attract{0%,100%{box-shadow:' + SHADOW_IDLE + '}50%{box-shadow:' + SHADOW_ATTRACT + '}}',
+  '@keyframes dip-bar-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}',
+  '@keyframes dip-bar-out{from{opacity:1;transform:none}to{opacity:0;transform:translateY(6px)}}',
   '@keyframes dip-burst{0%{opacity:.9;transform:scale(.4)}100%{opacity:0;transform:scale(3.4)}}',
 
   /* ---------- motion preferences: light freezes, legibility is untouched ---------- */
   '@media (prefers-reduced-motion: reduce){',
-  '.dip-root,.dip-ring,.dip-aurora,.dip-spark,.dip-icon,.dip-caret,.dip-chevron,.dip-burst,.dip-revert,.dip-retry,.dip-capsule-icon{animation:none!important;',
+  '.dip-root,.dip-ring,.dip-aurora,.dip-spark,.dip-icon,.dip-caret,.dip-chevron,.dip-burst,.dip-revert,.dip-retry,.dip-capsule-icon,.dip-bar{animation:none!important;',
   'transition-duration:.01ms!important}',
   '.dip-root:hover .dip-ring,.dip-root[data-busy="true"] .dip-ring{opacity:1}',
   // busy must still read as busy with motion off: a full-width static bar instead

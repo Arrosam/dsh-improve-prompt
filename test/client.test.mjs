@@ -109,7 +109,7 @@ test('the built bundle registers exactly the two composer entries under the righ
   assert.equal(id, 'dsh-improve-prompt')
   assert.deepEqual(module.inject, ['slots', 'locale'])
   assert.equal(registered.length, 2)
-  assert.deepEqual(registered.map((r) => r.options.name), ['conversation.input.right', 'conversation.input.dock'])
+  assert.deepEqual(registered.map((r) => r.options.name), ['conversation.input.right', 'conversation.input.overlay'])
   assert.deepEqual(registered.map((r) => r.options.id), ['dsh-improve-prompt-button', 'dsh-improve-prompt-bar'])
   for (const entry of registered) {
     assert.equal(entry.options.locale, 'dsh-improve-prompt', 'every entry is localizable')
@@ -268,6 +268,31 @@ test('after a refine the composer button becomes the Revert | Retry capsule', as
   }
 })
 
+test('the status bubble slides in, then stays mounted to slide out before unmounting', async () => {
+  const { button, bar } = await boot()
+  const originalFetch = globalThis.fetch
+  globalThis.fetch = async () => okResponse()
+  try {
+    const live = await mountLive(button, '把那个接口加上限流')
+    const barRenderer = await mount(bar, { sessionId: 's1', t: (key) => key })
+    await TestRenderer.act(async () => { await live.find('dip-btn')[0].props.onClick() })
+    const entering = barRenderer.root.findAllByProps({ className: 'dip-bar' })
+    assert.equal(entering.length, 1)
+    assert.equal(entering[0].props['data-state'], 'entering')
+
+    await live.rerender()
+    await TestRenderer.act(async () => { live.find('dip-revert')[0].props.onClick() })
+    const leaving = barRenderer.root.findAllByProps({ className: 'dip-bar' })
+    assert.equal(leaving.length, 1, 'the hidden bubble stays mounted for its exit animation')
+    assert.equal(leaving[0].props['data-state'], 'leaving')
+
+    await TestRenderer.act(async () => { await new Promise((resolve) => setTimeout(resolve, 250)) })
+    assert.equal(barRenderer.toJSON(), null, 'it unmounts once the exit has played')
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+
 test('editing the refined draft returns the composer button to the star', async () => {
   const { button } = await boot()
   const originalFetch = globalThis.fetch
@@ -282,6 +307,28 @@ test('editing the refined draft returns the composer button to the star', async 
     await live.rerender()
     assert.equal(live.find('dip-revert').length, 0)
     assert.equal(live.find('dip-btn').length, 1)
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+
+test('pressing any chip button does not take focus from the composer', async () => {
+  const { button } = await boot()
+  const originalFetch = globalThis.fetch
+  globalThis.fetch = async () => okResponse()
+  try {
+    const live = await mountLive(button, '把那个接口加上限流')
+    const pressed = (className) => {
+      let prevented = false
+      live.find(className)[0].props.onMouseDown({ preventDefault: () => { prevented = true } })
+      return prevented
+    }
+    assert.equal(pressed('dip-btn'), true, 'main button keeps the caret in the composer')
+    assert.equal(pressed('dip-chevron'), true, 'mode switch keeps the caret in the composer')
+    await TestRenderer.act(async () => { await live.find('dip-btn')[0].props.onClick() })
+    await live.rerender()
+    assert.equal(pressed('dip-revert'), true)
+    assert.equal(pressed('dip-retry'), true)
   } finally {
     globalThis.fetch = originalFetch
   }
