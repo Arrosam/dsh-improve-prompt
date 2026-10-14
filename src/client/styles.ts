@@ -166,6 +166,10 @@ export const css = [
   'text-shadow:0 1px 6px rgba(4,8,18,.8),0 0 12px rgba(43,108,255,.35);',
   'transition:max-width .3s cubic-bezier(.4,0,.2,1),opacity .22s ease,transform .3s cubic-bezier(.4,0,.2,1)}',
   EXPANDED + ' .dip-label{max-width:64px;opacity:1;transform:none}',
+  // Fixed width across modes: both names stack in one cell; only the active one is visible.
+  '.dip-label{display:inline-grid}',
+  '.dip-label-text{grid-area:1/1}',
+  '.dip-label-text[data-active="false"]{visibility:hidden}',
 
   /* ---------- the hairline divider ---------- */
   '.dip-divider{position:relative;z-index:2;width:1px;max-width:0;opacity:0;align-self:stretch;margin:7px 0;pointer-events:none;',
@@ -187,6 +191,21 @@ export const css = [
   '.dip-chevron:hover{background:linear-gradient(180deg,rgba(125,211,252,.12),rgba(43,108,255,.10))}',
   '.dip-chevron:hover .dip-caret{transform:translateY(1px)}',
   '.dip-chevron:active .dip-caret{transform:translateY(1px) scale(.88)}',
+
+  /* ---------- refined: the chip becomes the Revert | Retry capsule ---------- */
+  // Same plate and hairline as the expanded chip; both halves stay visible, no hover needed.
+  '.dip-root[data-refined="true"] .dip-divider{max-width:1px;opacity:1}',
+  '.dip-revert,.dip-retry{position:relative;z-index:2;display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 10px;border:0;background:transparent;',
+  'cursor:pointer;outline:none;white-space:nowrap;line-height:1;font-size:12px;font-weight:600;letter-spacing:.15px;',
+  'color:' + INK + ';text-shadow:0 1px 6px rgba(4,8,18,.8),0 0 12px rgba(43,108,255,.35);',
+  'transition:background-color .18s ease}',
+  '.dip-revert:hover,.dip-retry:hover{background:linear-gradient(180deg,rgba(125,211,252,.12),rgba(43,108,255,.10))}',
+  '.dip-revert:focus-visible,.dip-retry:focus-visible{box-shadow:inset 0 0 0 2px rgba(125,211,252,.8)}',
+  '.dip-revert:active,.dip-retry:active{filter:brightness(1.3)}',
+  '.dip-capsule-icon{display:block;flex:none;filter:drop-shadow(0 1px 3px rgba(4,8,18,.85)) drop-shadow(0 0 6px rgba(43,108,255,.45));',
+  'transition:transform .2s cubic-bezier(.34,1.56,.64,1)}',
+  '.dip-revert:hover .dip-capsule-icon{transform:translateX(-1px)}',
+  '.dip-retry:hover .dip-capsule-icon{transform:rotate(60deg)}',
 
   /* ---------- press: energy, not geometry ---------- */
   // Centred on the expanded star: switch 24px + divider 1px + main left padding 9px + half icon 7.5px.
@@ -244,18 +263,13 @@ export const css = [
   '.dip-root:hover .dip-icon{filter:drop-shadow(0 0 6px rgba(125,211,252,.95)) drop-shadow(0 0 12px rgba(245,197,66,.4))}',
   '.dip-root[data-busy="true"] .dip-icon{filter:drop-shadow(0 0 6px rgba(125,211,252,.95)) drop-shadow(0 0 12px rgba(245,197,66,.45))}',
 
-  /* ---------- status / undo bar ---------- */
+  /* ---------- status bar ---------- */
   '.dip-bar{display:flex;align-items:center;gap:8px;margin:0 auto 6px;max-width:100%;padding:5px 10px;',
   'border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-elevated,var(--dsw-alias-bg-base));',
   'font-size:12px;line-height:18px;color:var(--dsw-alias-label-secondary);box-shadow:0 1px 3px rgba(0,0,0,.06)}',
   '.dip-bar[data-kind="error"]{border-color:rgba(220,90,70,.5);color:var(--dsw-alias-label-primary)}',
   '.dip-bar-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
   '.dip-sep{opacity:.4}',
-  '.dip-undo{margin-left:2px;padding:1px 8px;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;',
-  'background:0 0;color:inherit;font-size:12px;cursor:pointer;outline:none;font-weight:500;',
-  'transition:background-color .15s ease,color .15s ease,transform .12s ease}',
-  '.dip-undo:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}',
-  '.dip-undo:active{transform:scale(.95)}',
 
   /* ---------- keyframes ---------- */
   '@keyframes dip-rim{to{transform:rotate(360deg)}}',
@@ -269,7 +283,7 @@ export const css = [
 
   /* ---------- motion preferences: light freezes, legibility is untouched ---------- */
   '@media (prefers-reduced-motion: reduce){',
-  '.dip-root,.dip-ring,.dip-aurora,.dip-spark,.dip-icon,.dip-caret,.dip-chevron,.dip-burst,.dip-undo{animation:none!important;',
+  '.dip-root,.dip-ring,.dip-aurora,.dip-spark,.dip-icon,.dip-caret,.dip-chevron,.dip-burst,.dip-revert,.dip-retry,.dip-capsule-icon{animation:none!important;',
   'transition-duration:.01ms!important}',
   '.dip-root:hover .dip-ring,.dip-root[data-busy="true"] .dip-ring{opacity:1}',
   // busy must still read as busy with motion off: a full-width static bar instead
